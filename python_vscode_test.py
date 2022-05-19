@@ -1,6 +1,5 @@
 from random import random
 import math
-from re import X
 import matplotlib.pyplot as plt
 
 def fun(a):
