@@ -1,5 +1,6 @@
 from random import random
 import math
+from re import X
 import matplotlib.pyplot as plt
 
 def fun(a):
@@ -38,3 +39,8 @@ def number_generator(n, factor):
 a = number_generator(10,10)
 
 print(a)
+
+x = 9
+y = 45
+r = y**X
+print(r)
