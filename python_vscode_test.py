@@ -34,4 +34,12 @@ def number_generator(n, factor):
 
     return numbers
 
-plt.plot([1,2,3],[1,4,9])
+
+a = number_generator(10,10)
+
+print(a)
+
+x = 9
+y = 45
+r = y**X
+print(r)
