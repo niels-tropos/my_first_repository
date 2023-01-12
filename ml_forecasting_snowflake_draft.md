@@ -52,8 +52,97 @@ Now that we have a basic understanding of how Python models work in dbt, it is t
 4. Time series forecasting to predict future client demand based on historic data
 5. ... 
 
-Since both dbt and Snowflake now allow the full usage of Python, we can set up our own machine learning pipeline right in dbt, enabling us to work <ins>end-to-end<ins>. The next section will go into more detail about how we use dbt and Snowflake to set up an <ins>end-to-end<ins> machine learning-based forecasting system to predict future client demand for each municipality in Flanders, Belgium.
+Since both dbt and Snowflake now allow the full usage of Python, we can set up an <ins>end-to-end</ins> machine learning pipeline right in dbt and Snowflake. The next section will go into more detail about how we use dbt and Snowflake to set up an <ins>end-to-end</ins> machine learning-based forecasting system to predict future client demand for each municipality in Flanders, Belgium.
 
 # Ref case: Time series forecasting to predict client demand
+A client active in home care wanted to predict future client demand for each municipality in Flanders in order to steer and match employee availability in order to avoid having employees without clients and having clients without a care taker. By predicting client demand in each municipality, they would be able to take employees who have too little clients from one municipality and deploy them to another where client demand exceeds employee availability. To aid in their migration to the Cloud, the following basic structure was set up:
+<img width="749" alt="image" src="https://user-images.githubusercontent.com/101560764/212202267-9f269830-6c09-4710-98f4-901642b71e5d.png">
+
+Using dbt Cloud, source data containg raw client and employee information is ingested into Snowflake. Next, the raw data is modelled using a collection of regular SQL models into a familiar star-schema or party-event model. From the modelled data, flat tables are derived in a preprocessing step and staged to be used in a forecasting algorithm. Here, historic client demand per municipilaty is chronologically ordered and collected in one big table. Once the data has the right shape and format, a Python model containing the Prophet forecasting algorithm is trained on each individual municipality and predicts client demand for the next few months. Here is a code example of the Python model in dbt Cloud:
+```python
+import pandas as pd
+import numpy as np
+from prophet import Prophet
+from datetime import datetime
+
+
+def train_predict_prophet(df, periods):
+    df_prophet_input = df[['ds', 'y']]
+    model = Prophet()
+    model.fit(df_prophet_input)
+    future_df = model.make_future_dataframe(
+        periods=periods, 
+        include_history=False)
+    forecast = model.predict(future_df)
+    return forecast
+
+def min_max_scaling(column):
+    if column.min() == column.max():
+        return [1] * len(column)
+    return (column - column.min())/(column.max() -  column.min())
+
+
+def model(dbt, session):
+    dbt.config(materialized = "table", packages = ["pandas", "numpy", "prophet"])
+
+    my_sql_model_df = dbt.ref("ml__pre_klantvraag")
+    df_main = my_sql_model_df.to_pandas() #CONVERT TO DATAFRAME DATATYPE
+    df_main['DATUM'] = pd.to_datetime(df_main['DATUM'], format='%Y-%m-%d') #CONVERT TO CORRECT DATEFORMAT
+    df_main = df_main.sort_values(by=['GEMEENTE', 'DATUM'])
+    df_main = df_main.rename(columns={"DATUM": "ds", "KLANT_VRAAG": "y"}) #RENAME DATUM AND VAL COLUMNS TO DS AND Y FOR PROPHET
+
+    unieke_gemeentes = df_main.GEMEENTE.unique()
+    unieke_regionale_steden= df_main.REGIONALE_STAD.unique()
+    union = pd.DataFrame()
+
+    for regionale_stad in unieke_regionale_steden:
+        for gemeente in unieke_gemeentes:
+
+            df_gemeente = df_main.loc[(df_main['REGIONALE_STAD'] == regionale_stad) & (df_main['GEMEENTE'] == gemeente)]
+            if df_gemeente.shape[0] == 0:
+                continue
+
+            #SCALAR FOR DENORMALIZATION AND EXTRACT CURRENT REGION
+            unieke_regios = df_gemeente.REGIO.unique()
+            current_regio = unieke_regios[0]
+
+            #NORMALIZE DATASET TO CONSIST OF VALUES 0-1
+            df_gemeente_history_deep = df_gemeente.loc[(df_gemeente['ds'] < datetime.strptime("2020-01-01", '%Y-%m-%d'))]
+            df_gemeente_history = df_gemeente.loc[(df_gemeente['ds'] >= datetime.strptime("2020-01-01", '%Y-%m-%d')) & (df_gemeente['ds'] < datetime.strptime("2022-01-01", '%Y-%m-%d'))]
+            df_gemeente_current = df_gemeente.loc[(df_gemeente['ds'] >= datetime.strptime("2022-01-01", '%Y-%m-%d'))]
+
+            scalar = df_gemeente_current['y'].max() - df_gemeente_current['y'].min() 
+            term = df_gemeente_current['y'].min() #descaling occurs by: scalar * val + ter
+            if scalar < 0.001: # aka scalar is zero
+                scalar = df_gemeente_current['y'].max()
+                term = 0
+
+            df_gemeente_history_deep['y'] = min_max_scaling(df_gemeente_history_deep['y'])
+            df_gemeente_history['y'] = min_max_scaling(df_gemeente_history['y'])
+            df_gemeente_current['y'] = min_max_scaling(df_gemeente_current['y'])
+            df_gemeente = pd.concat([df_gemeente_history_deep, df_gemeente_history, df_gemeente_current])
+
+            #TRAIN PROPHET AND FORECAST
+            forecast = train_predict_prophet(df_gemeente, 160)
+
+            #VOEG KENMERKENDE KOLOMMEN TOE AAN DE FORECAST
+            forecast['REGIO'] = [current_regio] * len(forecast)
+            forecast['REGIONALE_STAD'] = [regionale_stad] * len(forecast)
+            forecast['GEMEENTE'] = [gemeente] * len(forecast)
+            forecast['ISFORECAST'] = [1] * len(forecast)
+            forecast['SCALAR'] = [scalar] * len(forecast)
+            forecast['TERM'] = [term] * len(forecast)
+
+            #UNION HISTORIC DATA AND FORECAST
+            union = pd.concat([union, forecast])
+
+    union = union.reset_index(drop=True)
+    union['ds'] = union['ds'].dt.date
+    union = union.rename(columns={"ds": "DS", "y": "Y", "yhat":"YHAT", "yhat_lower":"YHAT_LOWER", "yhat_upper":"YHAT_UPPER"})
+    
+    return union
+```
+
+To use the output of the 
 
 # Final thoughts
