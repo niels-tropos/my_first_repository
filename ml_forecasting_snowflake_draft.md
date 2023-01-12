@@ -16,17 +16,27 @@ In dbt, a python model functions exactly as any other SQL model would. It can re
 SELECT *
 FROM {{ ref('ml_pre_clientdemand') }}
 ```
-where `ml_pre_clientdemand` is a regular upstream SQL model. A python model has a slightly more complex base structure:
+where `ml_pre_clientdemand` is a regular upstream SQL model, a python model has a slightly more complex base structure:
 ```python
 def model(dbt, session):
     dbt.config(materialized = "table", packages = ["pandas"])
-    table = dbt.ref("ml_pre_clientdemand")
-    df = table.to_pandas()
-    return table
+    referenced_table = dbt.ref("ml_pre_clientdemand")
+    df = referenced_table.to_pandas()
+    
+    #Python magic here!
+    
+    return df
 ```
+A few things to note here: 
+1. The model parameters `dbt` and `session` are required and not to be changed
+2. A dbt config block is used to configure the model as well denote any third party packages you might want to use
+3. Once a SQL model is referenced (`referenced_table`) and converted into a dataframe, all Python is fair game
+4. The model has to return a single dataframe, which will be materialized in your (Snowflake) data warehouse
+
 
 ![image](https://user-images.githubusercontent.com/101560764/212186189-c5e7aab7-586e-4b64-8cee-b586118bc2e9.png)
 
+# Snowpark API
 
 
 # Machine learning models
