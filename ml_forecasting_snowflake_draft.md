@@ -10,7 +10,9 @@ This blog will discuss the potential of using Python in a native SQL runner such
 # Why Python in dbt?
 Initially, this may seem strange. Transforming data is typically performed in native SQL runners. Eventhough it is possible with Python, SQL is known to be much more performant when it comes to quickly querying data. However, when it comes to machine learning, Python's rich open source library of pre-build packages allows you to easily implement advanced machine learning techniques right into your projects. While SQL beats Python in terms of raw data querying performance, Python beautifully complements this strength by enabling the implementation of advanced machine learning techniques on that same data. As of recently, both dbt and Snowflake have enabled writing and execution Python code directly into their environments, enabling engineers to effectively use A.I. right in their Snowlake data warehouse. 
 
-# Python models in dbt
+enable a mini machine learning pipeline, end to end data processing
+
+# Python models
 In dbt, a python model functions exactly as any other SQL model would. It can reference one or more upstream .sql models and can be referenced by downstream models using dbt's built-in ref funtion. Similar to the .sql models, Python models are created by adding the .py suffix and have to reside in dbts models folder. While a typical .sql model would look something like this:
 ```sql
 SELECT *
@@ -49,6 +51,8 @@ Now that we have a basic understanding of how Python models work in dbt, it is t
 3. Anomaly detection to detect fraud or machine defects
 4. Time series forecasting to predict future client demand based on historic data
 5. ... 
+
+Since both dbt and Snowflake now allow the full usage of Python, we can set up our own machine learning pipeline right in dbt, enabling us to work _end-to-end_. The next section will go into more detail about how we use dbt and Snowflake to set up an _end-to-end_ machine learning-based forecasting system to predict future client demand for each municipality in Flanders, Belgium.
 
 # Ref case: Time series forecasting to predict client demand
 
