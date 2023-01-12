@@ -1,10 +1,10 @@
-# How use Python for machine learning-based forecasting in dbt Cloud/Snowflake
+# How use Python for machine learning-based forecasting in dbt - Snowflake ecosystem
 This blog will discuss the potential of using Python in a native SQL runner such as dt/Snowflake, to enable machine learning in your data projects. This post will go over reasons as to why you would want to run Python in dbt/Snowflake, how that would work and a code example from one of our own projects. More specifically, we recently implemented Facebooks Prophet, an advanced SARIMA model, right into dbt Cloud to forecast client demand in different municipalities based on historic trends.
 
 - [Why Python in dbt?](#why-python-in-dbt)
 - [Python models](#python-models)
 - [Machine learning models in dbt](#machine-learning-models-in-dbt)
-- [Ref case: Time series forecasting to predict client demand](#ref-case-%:-time-series-forecasting-to-predict-client-demand)
+- [Ref case: Time series forecasting to predict client demand](#ref-case-time-series-forecasting-to-predict-client-demand)
 - [Final Thoughts](#Final-thoughts)
 
 # Why Python in dbt?
