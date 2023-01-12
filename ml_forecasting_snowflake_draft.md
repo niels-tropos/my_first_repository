@@ -4,7 +4,7 @@ This blog will discuss the potential of using Python in a native SQL runner such
 - [Why Python in dbt?](#why-python-in-dbt)
 - [Python models](#python-models)
 - [Machine learning models in dbt](#machine-learning-models-in-dbt)
-- [Ref case: Time series forecasting to predict client demand](#ref-case-:-time-series-forecasting-to-predict-client-demand)
+- [Ref case: Time series forecasting to predict client demand](#ref-case-%:-time-series-forecasting-to-predict-client-demand)
 - [Final Thoughts](#Final-thoughts)
 
 # Why Python in dbt?
