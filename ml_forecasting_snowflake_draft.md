@@ -30,18 +30,25 @@ def model(dbt, session):
 A few things to note here: 
 1. The model parameters `dbt` and `session` are required and not to be changed
 2. A dbt config block is used to configure the model as well denote any third party packages like numpy you might want to use
-3. The `ORGADMIN` of target Snowflake account must enable the use of third party Python packages [Using Third-Party packages in Snowflake](https://docs.snowflake.com/en/developer-guide/udf/python/udf-python-packages.html#using-third-party-packages-from-anaconda)
+3. The `ORGADMIN` of target Snowflake account must enable the use of third party Python packages --> [Using Third-Party packages in Snowflake](https://docs.snowflake.com/en/developer-guide/udf/python/udf-python-packages.html#using-third-party-packages-from-anaconda)
 4. The model has to return a single dataframe, which will be materialized in your (Snowflake) data warehouse
-5. A dbt config block is used to configure the model as well denote any third party packages you might want to use
-6. Once a SQL model is referenced (`referenced_table`) and converted into a dataframe, all Python is fair game
+5. Once a SQL model is referenced (`referenced_table`) and converted into a dataframe, all Python is fair game
 
-
+In the dbt lineage graph, a Python model is indistinguisable from the regular SQL models:
 ![image](https://user-images.githubusercontent.com/101560764/212186189-c5e7aab7-586e-4b64-8cee-b586118bc2e9.png)
 
 # Snowpark API
+Alternatively, the Snowpark API can be used to access and transform tables in Snowflake from a (local) Python IDE. It also enables you to execute Python using Snowflake's compute power. As an examle, we have used the Snowpark API to deploy a Python UDF from a local notebook to our Snowflake account that converts XML formatted cells into the preferred JSON format. Besides UDFs, it is also possible to create Snowflake stored procedures using the Python languag. In fact, this is how dbt runs the Python models in the background. Snowflake converts the Python models into a temporary stored procedure, which is called and executed once before being dropped.
 
+--to be continued--
 
 # Machine learning models
+Now that we have a basic understanding of how Python models work in dbt, it is time to take it up a notch. Python's open source library of packages make more advanced matters such as machine learning and A.I. accessible to everyone. Popular packages like `Facebook's Prophet`, `Amazon's deepAR`, `Scikit-learn`, `Scipy`, `Pandas` and even `Pytorch` and `Tensorflow` make it easier than ever for data engineers to implement machine learning in their data projects to solve all kinds of problems. Typical usecases may be
+1. Data clustering to group similar clients C
+2. Classification to predict cancer in patients based on a collection of biomarkers
+3. Anomaly detection to detect fraud or machine defects
+4. Time series forecasting to predict future client demand based on historic data
+5. ... 
 
 # Ref case: Time series forecasting to predict client demand
 
