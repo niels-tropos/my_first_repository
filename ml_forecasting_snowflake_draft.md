@@ -45,134 +45,15 @@ Alternatively, the Snowpark API can be used to access and transform tables in Sn
 --to be continued--
 
 # Machine learning models
-Now that we have a basic understanding of how Python models work in dbt, it is time to take it up a notch. Python's open source library of packages make more advanced matters such as machine learning and A.I. accessible to everyone. Popular packages like `Facebook's Prophet`, `Amazon's deepAR`, `Scikit-learn`, `Scipy`, `Pandas` and even `Pytorch` and `Tensorflow` make it easier than ever for data engineers to implement machine learning in their data projects to solve all kinds of problems. Typical usecases may be
-1. Data clustering to group similar clients C
+Now that we have a basic understanding of how Python models work in dbt, it is time to take it up a notch. Python's open source library of packages make more advanced matters such as machine learning and A.I. accessible to everyone. Popular packages like `Facebook's Prophet`, `Amazon's deepAR`, `Scikit-learn`, `Scipy`, `Pandas` and even `Pytorch` and `Tensorflow` make it easier than ever for data engineers to implement machine learning in their data projects to solve all kinds of problems. Typical usecases may be:
+1. Data clustering to group similar clients 
 2. Classification to predict cancer in patients based on a collection of biomarkers
 3. Anomaly detection to detect fraud or machine defects
 4. Time series forecasting to predict future client demand based on historic data
 5. ... 
 
-Since both dbt and Snowflake now allow the full usage of Python, we can set up our own machine learning pipeline right in dbt, enabling us to work _end-to-end_. The next section will go into more detail about how we use dbt and Snowflake to set up an _end-to-end_ machine learning-based forecasting system to predict future client demand for each municipality in Flanders, Belgium.
+Since both dbt and Snowflake now allow the full usage of Python, we can set up our own machine learning pipeline right in dbt, enabling us to work <ins>end-to-end<ins>. The next section will go into more detail about how we use dbt and Snowflake to set up an <ins>end-to-end<ins> machine learning-based forecasting system to predict future client demand for each municipality in Flanders, Belgium.
 
 # Ref case: Time series forecasting to predict client demand
 
 # Final thoughts
-
-
-# UDF_xml2json
-**xml2json** is a Snowflake UDF specifally designed to efficiently and easily convert xml to json. It uses the Snowpark API to enable Python code to run in Snowflake, deploying a permanent UDF that converts XML to JSON. Executing the code in the source_code.py file deploys the permanent UDF to the target Snowflake account and makes is accessible to the specified users and roles. Cross account sharing of the function is currently still handled within Snowflake. 
-
-- [Set-up](#set-up)
-- [Code usage and application](#code-usage-and-application)
-- [Code breakdown](#code-breakdown)
-
-# Set-up
-To run the code on your own machine and deploy the UDF yourself, note the following steps:
-1. Install Anaconda Navigator on your machine: [Anaconda](https://www.anaconda.com/products/distribution).
-2. Create a new environment with Python version 3.8.13, ***not*** the newest 3.9.
-3. Open the terminal and activate your new environment: `conda activate <your env name>`.
-4. Download the 'requirements.txt' file and run the following command in the terminal to install all necessary packages: `pip install -r requirements.txt`. Alternatively, run ```pip install snowflake-snowpark-python``` and ```conda install xmltodict```.
-5. You may close the terminal now.
-6. Open the 'source_code.py' file in an IDE of your choosing in your Snowflake environment created in step 2.
-7. Enter the connection parameters in the first section of the code file. For this, follow the in-code guidelines.
-8. NOTE: Before running the code, the ORGADMIN must have allowed third party packages originating from Anaconda to be used in the target snowflake account. If the option is not enable, the code will not execute. For enable this function, go to [this link](https://docs.snowflake.com/en/developer-guide/udf/python/udf-python-packages.html) and follow the instructions.
-
-# Code usage and application
-Executing the 'source_code.py' file will deploy a new **xml2json** permanent UDF to target Snowflake account and will override any previously existing UDFs with the same name. For this, you need to enter the connection paramters in between the brackets: 
-```python
-account = ""
-login_name = ""
-password = ""
-role = ""
-warehouse = ""
-database = ""
-schema = ""
-user_stage = ""
-privileged_roles_to_access_udf = ["a, b, ..."]
-```
-In Snowflake, the function simply converts xml to json. A typical usecase would be:
-```sql
-SELECT *, xml2json(xml)
-FROM <table>
-```
-Additionally, when creating a new table, make sure you denote the column names of the new table you want to create. Example:
-```sql
-CREATE OR REPLACE table <new table> (column1, column2, column3, ..., JSON) AS
-SELECT *, xml2json(xml) AS JSON
-from <old table>
-```
-***Importantly***, if the input XML format is invalid, the function will output the text "*Error: invalid XML format*" to the row in question. This means that the function will not stop and simply continue without visibly raising an error. To verify the conversion succeeded,  you need to check manually whether there are any rows where the conversion failed by applying the `... WHERE <JSON column> like "%Error: invalid XML format%"` filter on the newly created table. Should this error occur in cases where the XML format is valid, you may report this as a bug to [Niels Palmans](https://github.com/niels-tropos).
-
-# Code breakdown
-This section will discuss the code in greater detail, going over each seperate block and explaining its function.
-
-First, the necessary packages are imported, specifically Snowpark to establisch the connection between your local Python code and the Snowflake environment. Fill in the Snowflake connection parameters to exactly tell the system where to deploy the xml2json UDF to. These parameters control what Snowflake account the function will be deployed on, on what stage it is staged and what roles can use it.
-```python
-from snowflake.snowpark.session import Session
-from snowflake.snowpark.functions import udf
-import xmltodict, json
-
-#-------------------------------------------Fill in Snowflake Connection Parameters------------------------------------------
-
-account = "***"
-login_name = ""***""
-password = ""***""
-role = "accountadmin"
-warehouse = "engineering"
-database = "demo"
-schema = "openstreetmap"
-user_stage = "@~"
-privileged_roles_to_access_udf = ["engineer"]
-
-```
-Next, we define a function that will later be used to initialize a new session object using the connection parameters set in the previous step. When the function is called, it will also print out the current warehouse, database and schema the newly created session is running on.
-```python
-def create_session_object(connection_parameters):
-    current_session = Session.builder.configs(connection_parameters).create()
-    print(current_session.sql('select current_warehouse(), current_database(), current_schema()').collect())
-    return current_session
-```
-
-Third, we define the actual xml2json function that will convert the xml formatted strings into easier to process json. If the conversion fails due to the detection of an invalid xml format, the function will not stop but rather return "Error: invalid XML format" and continue. This is to avoid the function crashing an entire query when encountering a single cell containing an invalid xml format.
-```python
-def xml2json(xml: str)-> str:
-    try:
-        json_string = json.dumps(xmltodict.parse(xml))
-        json_string_cleaned = json_string.replace("@", "")
-        return json_string_cleaned
-    
-    except Exception as e:
-        return "Error: invalid XML format"
-```
-
-Now that we have set the connection parameters, made a function to create a new session and defined the xml2json function, we will use the connection parameters to create a new session? Afterwards, we import the relevant `xmltodict` package into Snowflake to make sure Snowflake has access to this package.
-```python
-connection_parameters = {
-"account": account,
-"user": login_name,
-"password": password,
-"role": role,
-"warehouse": warehouse,
-"database": database,
-"schema": schema
-}
-
-current_session = create_session_object(connection_parameters)
-current_session.add_packages("xmltodict")
-```
-
-Next, we register the xml2json function in Snowflake using the register method. This converts the above Python code into an actual usable permanent UDF in Snowflake. The replace parameter is set to `True` as to make sure that rerunning the code actively updates the UDF with the latest version. 
-```python
-current_session.udf.register(xml2json
-                             , name ="XML2JSON"
-                             , is_permanent=True
-                             , stage_location=user_stage
-                             , replace=True)
-```
-
-Lastly, we grant the usage privilage to each role that mentioned in the `privileged_roles_to_access_udf` parameter. Here, we use the Snowpark API to write SQL that is to be executed in Snowflake.
-```python
-for role in privileged_roles_to_access_udf:
-    current_session.sql(f'grant usage on function xml2json(varchar) to {role}').collect()
-```
-
