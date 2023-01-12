@@ -29,9 +29,11 @@ def model(dbt, session):
 ```
 A few things to note here: 
 1. The model parameters `dbt` and `session` are required and not to be changed
-2. A dbt config block is used to configure the model as well denote any third party packages you might want to use
-3. Once a SQL model is referenced (`referenced_table`) and converted into a dataframe, all Python is fair game
+2. A dbt config block is used to configure the model as well denote any third party packages like numpy you might want to use
+3. The `ORGADMIN` of target Snowflake account must enable the use of third party Python packages [Using Third-Party packages in Snowflake](https://docs.snowflake.com/en/developer-guide/udf/python/udf-python-packages.html#using-third-party-packages-from-anaconda)
 4. The model has to return a single dataframe, which will be materialized in your (Snowflake) data warehouse
+5. A dbt config block is used to configure the model as well denote any third party packages you might want to use
+6. Once a SQL model is referenced (`referenced_table`) and converted into a dataframe, all Python is fair game
 
 
 ![image](https://user-images.githubusercontent.com/101560764/212186189-c5e7aab7-586e-4b64-8cee-b586118bc2e9.png)
