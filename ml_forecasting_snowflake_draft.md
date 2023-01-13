@@ -143,9 +143,9 @@ def model(dbt, session):
     return union
 ```
 A few things to note here: 
--As can be seen above, while `def model(dbt, session)` function is required, there is no limit on the number of self-defined functions that you can use. 
--Additionally, while as much of the preprocessing as possible should be done in an upstream SQL model for performance purposes, some light preprocessing and postprocessing can be done if the situation calls for it. Examples are casting dateformats to pandas dateformat, renaming columns as Prophet demands the value column to be called `y` and the date column to be called `ds` or collecting the forecast results in a manner easily readible. 
--Lastly, the packages defined in the dbt model's config block and those imported at the top of the file _the old fashioned way_ have the same functionality. However, by importing packages at the top, they allow you to set abreviations for certain names (like pandas --> pd).
+- As can be seen above, while `def model(dbt, session)` function is required, there is no limit on the number of self-defined functions that you can use. 
+- Additionally, while as much of the preprocessing as possible should be done in an upstream SQL model for performance purposes, some light preprocessing and postprocessing can be done if the situation calls for it. Examples are casting dateformats to pandas dateformat, renaming columns as Prophet demands the value column to be called `y` and the date column to be called `ds` or collecting the forecast results in a manner easily readible. 
+- Lastly, the packages defined in the dbt model's config block and those imported at the top of the file _the old fashioned way_ have the same functionality. However, by importing packages at the top, they allow you to set abreviations for certain names (like pandas --> pd).
 
 Once the output of the forecast has been collected, a postprocessing step is performed in a final SQL model before the result table is send to the visualisation tool:
 <img width="707" alt="image" src="https://user-images.githubusercontent.com/101560764/212207236-cc10b7e8-c384-4dd6-807a-6178d7ba9bea.png">
