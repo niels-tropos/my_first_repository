@@ -61,8 +61,8 @@ A client active in home care wanted to predict future client demand for each mun
 Using dbt Cloud, source data containg raw client and employee information is ingested into Snowflake. Next, the raw data is modelled using a collection of regular SQL models into a familiar star-schema or party-event model. From the modelled data, flat tables are derived in a preprocessing step and staged to be used in a forecasting algorithm. Here, historic client demand per municipilaty is chronologically ordered and collected in one big table. Once the data has the right shape and format, a Python model containing the Prophet forecasting algorithm is trained on each individual municipality and predicts client demand for the next few months. Here is a code example of the Python model in dbt Cloud:
 ```python
 import pandas as pd
-import numpy as np
 from prophet import Prophet
+import numpy as np
 from datetime import datetime
 
 
@@ -85,50 +85,50 @@ def min_max_scaling(column):
 def model(dbt, session):
     dbt.config(materialized = "table", packages = ["pandas", "numpy", "prophet"])
 
-    my_sql_model_df = dbt.ref("ml__pre_klantvraag")
+    my_sql_model_df = dbt.ref("ml_pre_clientdemand")
     df_main = my_sql_model_df.to_pandas() #CONVERT TO DATAFRAME DATATYPE
-    df_main['DATUM'] = pd.to_datetime(df_main['DATUM'], format='%Y-%m-%d') #CONVERT TO CORRECT DATEFORMAT
-    df_main = df_main.sort_values(by=['GEMEENTE', 'DATUM'])
+    df_main['DATE'] = pd.to_datetime(df_main['DATE'], format='%Y-%m-%d') #CONVERT TO CORRECT DATEFORMAT
+    df_main = df_main.sort_values(by=['MUNICIPALITY', 'DATUM'])
     df_main = df_main.rename(columns={"DATUM": "ds", "KLANT_VRAAG": "y"}) #RENAME DATUM AND VAL COLUMNS TO DS AND Y FOR PROPHET
 
-    unieke_gemeentes = df_main.GEMEENTE.unique()
+    unique_regional_cities = df_main.MUNICIPALITY.unique()
     unieke_regionale_steden= df_main.REGIONALE_STAD.unique()
     union = pd.DataFrame()
 
-    for regionale_stad in unieke_regionale_steden:
-        for gemeente in unieke_gemeentes:
+    for regionale_stad in unique_regional_cities:
+        for gemeente in unique_municipalities:
 
-            df_gemeente = df_main.loc[(df_main['REGIONALE_STAD'] == regionale_stad) & (df_main['GEMEENTE'] == gemeente)]
-            if df_gemeente.shape[0] == 0:
+            df_municipality = df_main.loc[(df_main['REGIONAL_CITY'] == regionale_stad) & (df_main['MUNICIPALITY'] == municipality)]
+            if municipality.shape[0] == 0:
                 continue
 
             #SCALAR FOR DENORMALIZATION AND EXTRACT CURRENT REGION
-            unieke_regios = df_gemeente.REGIO.unique()
-            current_regio = unieke_regios[0]
+            unique_regions = df_municipality.REGIO.unique()
+            current_region = unique_regions[0]
 
             #NORMALIZE DATASET TO CONSIST OF VALUES 0-1
-            df_gemeente_history_deep = df_gemeente.loc[(df_gemeente['ds'] < datetime.strptime("2020-01-01", '%Y-%m-%d'))]
-            df_gemeente_history = df_gemeente.loc[(df_gemeente['ds'] >= datetime.strptime("2020-01-01", '%Y-%m-%d')) & (df_gemeente['ds'] < datetime.strptime("2022-01-01", '%Y-%m-%d'))]
-            df_gemeente_current = df_gemeente.loc[(df_gemeente['ds'] >= datetime.strptime("2022-01-01", '%Y-%m-%d'))]
+            df_municipality_history_deep = df_municipality.loc[(df_municipality['ds'] < datetime.strptime("2020-01-01", '%Y-%m-%d'))]
+            df_municipality_history = df_municipality.loc[(df_municipality['ds'] >= datetime.strptime("2020-01-01", '%Y-%m-%d')) &       (df_gemeente['ds'] < datetime.strptime("2022-01-01", '%Y-%m-%d'))]
+            df_municipality_current = df_municipality.loc[(df_municipality['ds'] >= datetime.strptime("2022-01-01", '%Y-%m-%d'))]
 
-            scalar = df_gemeente_current['y'].max() - df_gemeente_current['y'].min() 
-            term = df_gemeente_current['y'].min() #descaling occurs by: scalar * val + ter
+            scalar = df_municipality_current['y'].max() - df_municipality_current['y'].min() 
+            term = df_municipality_current['y'].min() #descaling occurs by: scalar * val + ter
             if scalar < 0.001: # aka scalar is zero
-                scalar = df_gemeente_current['y'].max()
+                scalar = df_municipality_current['y'].max()
                 term = 0
 
-            df_gemeente_history_deep['y'] = min_max_scaling(df_gemeente_history_deep['y'])
-            df_gemeente_history['y'] = min_max_scaling(df_gemeente_history['y'])
-            df_gemeente_current['y'] = min_max_scaling(df_gemeente_current['y'])
-            df_gemeente = pd.concat([df_gemeente_history_deep, df_gemeente_history, df_gemeente_current])
+            df_municipality_history_deep['y'] = min_max_scaling(df_municipality_history_deep['y'])
+            df_municipality_history['y'] = min_max_scaling(df_municipality_history['y'])
+            df_municipality_current['y'] = min_max_scaling(df_municipality_current['y'])
+            df_municipality = pd.concat([df_municipality_history_deep, df_municipality_history, df_municipality_current])
 
-            #TRAIN PROPHET AND FORECAST
-            forecast = train_predict_prophet(df_gemeente, 160)
+            #TRAIN PROPHET AND RETURN FORECAST
+            forecast = train_predict_prophet(df_municipality, 160)
 
-            #VOEG KENMERKENDE KOLOMMEN TOE AAN DE FORECAST
-            forecast['REGIO'] = [current_regio] * len(forecast)
-            forecast['REGIONALE_STAD'] = [regionale_stad] * len(forecast)
-            forecast['GEMEENTE'] = [gemeente] * len(forecast)
+            #ADD CHARACTERIZING COLUMNS TO FORECAST
+            forecast['REGION'] = [current_region] * len(forecast)
+            forecast['REGIONAL_CITY'] = [regional_city] * len(forecast)
+            forecast['MUNICIPALTY'] = [municipality] * len(forecast)
             forecast['ISFORECAST'] = [1] * len(forecast)
             forecast['SCALAR'] = [scalar] * len(forecast)
             forecast['TERM'] = [term] * len(forecast)
@@ -142,7 +142,16 @@ def model(dbt, session):
     
     return union
 ```
+A few things to note here: 
+As can be seen above, while `def model(dbt, session)` function is required, there is no limit on the number of self-defined functions that you can use. 
 
-To use the output of the 
+Additionally, while as much of the preprocessing as possible should be done in an upstream SQL model for performance purposes, some light preprocessing and postprocessing can be done if the situation calls for it. Examples are casting dateformats to pandas dateformat, renaming columns as Prophet demands the value column to be called `y` and the date column to be called `ds` or collecting the forecast results in a manner easily readible. 
+
+Lastly, the packages defined in the dbt model's config block and those imported at the top of the file _the old fashioned way_ have the same functionality. However, by importing packages at the top, they allow you to set abreviations for certain names (like pandas --> pd).
+
+Once the output of the forecast has been collected, a postprocessing step is performed in a final SQL model before the result table is send to the visualisation tool. 
+<img width="707" alt="image" src="https://user-images.githubusercontent.com/101560764/212207236-cc10b7e8-c384-4dd6-807a-6178d7ba9bea.png">
+Performance metrics show accurate predictions for up to a year after the last observation, implying Prophet correctly captures historic trends to predict future client demand. Although Prophet is still a relatively simple forecasting technique, it opens the door to implement much more advanced techniques should the 
+
 
 # Final thoughts
