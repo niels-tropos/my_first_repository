@@ -143,15 +143,16 @@ def model(dbt, session):
     return union
 ```
 A few things to note here: 
-As can be seen above, while `def model(dbt, session)` function is required, there is no limit on the number of self-defined functions that you can use. 
+-As can be seen above, while `def model(dbt, session)` function is required, there is no limit on the number of self-defined functions that you can use. 
+-Additionally, while as much of the preprocessing as possible should be done in an upstream SQL model for performance purposes, some light preprocessing and postprocessing can be done if the situation calls for it. Examples are casting dateformats to pandas dateformat, renaming columns as Prophet demands the value column to be called `y` and the date column to be called `ds` or collecting the forecast results in a manner easily readible. 
+-Lastly, the packages defined in the dbt model's config block and those imported at the top of the file _the old fashioned way_ have the same functionality. However, by importing packages at the top, they allow you to set abreviations for certain names (like pandas --> pd).
 
-Additionally, while as much of the preprocessing as possible should be done in an upstream SQL model for performance purposes, some light preprocessing and postprocessing can be done if the situation calls for it. Examples are casting dateformats to pandas dateformat, renaming columns as Prophet demands the value column to be called `y` and the date column to be called `ds` or collecting the forecast results in a manner easily readible. 
-
-Lastly, the packages defined in the dbt model's config block and those imported at the top of the file _the old fashioned way_ have the same functionality. However, by importing packages at the top, they allow you to set abreviations for certain names (like pandas --> pd).
-
-Once the output of the forecast has been collected, a postprocessing step is performed in a final SQL model before the result table is send to the visualisation tool. 
+Once the output of the forecast has been collected, a postprocessing step is performed in a final SQL model before the result table is send to the visualisation tool:
 <img width="707" alt="image" src="https://user-images.githubusercontent.com/101560764/212207236-cc10b7e8-c384-4dd6-807a-6178d7ba9bea.png">
-Performance metrics show accurate predictions for up to a year after the last observation, implying Prophet correctly captures historic trends to predict future client demand. Although Prophet is still a relatively simple forecasting technique, it opens the door to implement much more advanced techniques should the 
 
+Performance metrics show accurate predictions for up to a year after the last observation, implying Prophet correctly captures historic trends to predict future client demand. Although Prophet is still a relatively simple forecasting technique, it opens the door to implement much more advanced techniques should the problem demand it. Amazon's deepAR or other recurrent and LSTM neural networks have proven to be more accurate and more capable of learning complex patterns. However, training neural netowrks takes significantly longer. For this reason, performing model training and prediction in a single Python model (as shown above) is discouraged. When working with neural networks, it is much more efficient to train the model in a one Python file and saving the weights in a Pickle file to an internal stage in Snowflake. Next, to use the trained model, the weights can be loaded back in into a different Python model, separation training from prediction.
+
+--provide code example using DeepAR--
 
 # Final thoughts
+
